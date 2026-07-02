@@ -1,4 +1,8 @@
-controller_manager:
+# "/**/<node>" instead of a bare node name so this file loads correctly whether
+# controller_manager runs unnamespaced (single robot) or under /<robot_name>/
+# (multi-robot) - ROS2 param YAML only auto-matches a bare key against the root
+# namespace.
+/**/controller_manager:
   ros__parameters:
     update_rate: 30
 
@@ -8,7 +12,7 @@ controller_manager:
     diff_drive_controller:
       type: diff_drive_controller/DiffDriveController
 
-diff_drive_controller:
+/**/diff_drive_controller:
   ros__parameters:
     left_wheel_names: ["left_wheel_joint"]
     right_wheel_names: ["right_wheel_joint"]

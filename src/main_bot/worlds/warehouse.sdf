@@ -36,6 +36,13 @@
             name="gz::sim::systems::SceneBroadcaster"/>
     <plugin filename="gz-sim-contact-system"
             name="gz::sim::systems::Contact"/>
+    <!-- Declared once here (not per-robot) - the Sensors system is a world-level
+         singleton; registering it again per spawned model races/crashes the
+         renderer with more than one gpu_lidar sensor. -->
+    <plugin filename="gz-sim-sensors-system"
+            name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
 
     <!-- ═══ Physics ════════════════════════════════════════════════ -->
     <physics name="1ms" type="ode">
@@ -277,16 +284,6 @@
         <visual name="vis"><geometry><box><size>0.075 0.075 1.75</size></box></geometry>
           <material><ambient>0.42 0.42 0.46 1</ambient><diffuse>0.42 0.42 0.46 1</diffuse></material></visual></link>
     </model>
-    <model name="pillar_9"><static>true</static><pose>4.5 3.75 0.875 0 0 0</pose>
-      <link name="link"><collision name="col"><geometry><box><size>0.075 0.075 1.75</size></box></geometry></collision>
-        <visual name="vis"><geometry><box><size>0.075 0.075 1.75</size></box></geometry>
-          <material><ambient>0.42 0.42 0.46 1</ambient><diffuse>0.42 0.42 0.46 1</diffuse></material></visual></link>
-    </model>
-    <model name="pillar_10"><static>true</static><pose>4.5 -3.75 0.875 0 0 0</pose>
-      <link name="link"><collision name="col"><geometry><box><size>0.075 0.075 1.75</size></box></geometry></collision>
-        <visual name="vis"><geometry><box><size>0.075 0.075 1.75</size></box></geometry>
-          <material><ambient>0.42 0.42 0.46 1</ambient><diffuse>0.42 0.42 0.46 1</diffuse></material></visual></link>
-    </model>
     <model name="pillar_11"><static>true</static><pose>-11.625 3.75 0.875 0 0 0</pose>
       <link name="link"><collision name="col"><geometry><box><size>0.075 0.075 1.75</size></box></geometry></collision>
         <visual name="vis"><geometry><box><size>0.075 0.075 1.75</size></box></geometry>
@@ -445,6 +442,31 @@
     </model>
     <!-- Bay entrance floor marking (yellow strip, at the room-facing mouth) -->
     <model name="chrg_entry_mark"><static>true</static><pose>3.75 -3.855 0.00025 0 0 0</pose>
+      <link name="link">
+        <visual name="vis"><geometry><box><size>0.8 0.04 0.0005</size></box></geometry>
+          <material><ambient>0.85 0.75 0.05 1</ambient><diffuse>0.85 0.75 0.05 1</diffuse></material></visual></link>
+    </model>
+
+    <!-- ═══ CHARGING STATION 2 — second bay, east of bay 1 with a 0.10m gap    -->
+    <!-- between the walls (bay1 east wall outer face at x=4.20, bay2 west     -->
+    <!-- wall outer face at x=4.30). Same south-facing layout as bay 1, for    -->
+    <!-- robot2 in the multi-robot setup.                                     -->
+    <model name="chrg2_wall_w"><static>true</static><pose>4.34 -4.175 0.15 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><box><size>0.08 0.6 0.3</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>0.08 0.6 0.3</size></box></geometry>
+          <material><ambient>0.85 0.75 0.05 1</ambient><diffuse>0.85 0.75 0.05 1</diffuse></material></visual></link>
+    </model>
+    <model name="chrg2_wall_e"><static>true</static><pose>5.16 -4.175 0.15 0 0 0</pose>
+      <link name="link"><collision name="col"><geometry><box><size>0.08 0.6 0.3</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>0.08 0.6 0.3</size></box></geometry>
+          <material><ambient>0.85 0.75 0.05 1</ambient><diffuse>0.85 0.75 0.05 1</diffuse></material></visual></link>
+    </model>
+    <model name="chrg2_pad"><static>true</static><pose>4.75 -4.175 0.00025 0 0 0</pose>
+      <link name="link">
+        <visual name="vis"><geometry><box><size>0.8 0.6 0.0005</size></box></geometry>
+          <material><ambient>0.5 0.88 0.1 1</ambient><diffuse>0.5 0.88 0.1 1</diffuse></material></visual></link>
+    </model>
+    <model name="chrg2_entry_mark"><static>true</static><pose>4.75 -3.855 0.00025 0 0 0</pose>
       <link name="link">
         <visual name="vis"><geometry><box><size>0.8 0.04 0.0005</size></box></geometry>
           <material><ambient>0.85 0.75 0.05 1</ambient><diffuse>0.85 0.75 0.05 1</diffuse></material></visual></link>
@@ -1169,28 +1191,6 @@
       <link name="link"><collision name="col"><geometry><box><size>0.07 0.055 0.07</size></box></geometry></collision>
         <visual name="vis"><geometry><box><size>0.07 0.055 0.07</size></box></geometry>
           <material><ambient>0.6 0.3 0.3 1</ambient><diffuse>0.6 0.3 0.3 1</diffuse></material></visual></link>
-    </model>
-
-    <!-- Safety cones flanking the storage/loading divider gateway -->
-    <model name="safety_cone_1"><static>true</static><pose>1 0.8 0.0375 0 0 0</pose>
-      <link name="link"><collision name="col"><geometry><cylinder><radius>0.0225</radius><length>0.075</length></cylinder></geometry></collision>
-        <visual name="vis"><geometry><cylinder><radius>0.0225</radius><length>0.075</length></cylinder></geometry>
-          <material><ambient>0.9 0.35 0.05 1</ambient><diffuse>0.9 0.35 0.05 1</diffuse></material></visual></link>
-    </model>
-    <model name="safety_cone_2"><static>true</static><pose>1 -0.8 0.0375 0 0 0</pose>
-      <link name="link"><collision name="col"><geometry><cylinder><radius>0.0225</radius><length>0.075</length></cylinder></geometry></collision>
-        <visual name="vis"><geometry><cylinder><radius>0.0225</radius><length>0.075</length></cylinder></geometry>
-          <material><ambient>0.9 0.35 0.05 1</ambient><diffuse>0.9 0.35 0.05 1</diffuse></material></visual></link>
-    </model>
-    <model name="safety_cone_3"><static>true</static><pose>2.75 0.8 0.0375 0 0 0</pose>
-      <link name="link"><collision name="col"><geometry><cylinder><radius>0.0225</radius><length>0.075</length></cylinder></geometry></collision>
-        <visual name="vis"><geometry><cylinder><radius>0.0225</radius><length>0.075</length></cylinder></geometry>
-          <material><ambient>0.9 0.35 0.05 1</ambient><diffuse>0.9 0.35 0.05 1</diffuse></material></visual></link>
-    </model>
-    <model name="safety_cone_4"><static>true</static><pose>2.75 -0.8 0.0375 0 0 0</pose>
-      <link name="link"><collision name="col"><geometry><cylinder><radius>0.0225</radius><length>0.075</length></cylinder></geometry></collision>
-        <visual name="vis"><geometry><cylinder><radius>0.0225</radius><length>0.075</length></cylinder></geometry>
-          <material><ambient>0.9 0.35 0.05 1</ambient><diffuse>0.9 0.35 0.05 1</diffuse></material></visual></link>
     </model>
 
   </world>

@@ -3,7 +3,12 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, RegisterEventHandler
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    RegisterEventHandler,
+    UnsetEnvironmentVariable,
+)
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -133,6 +138,13 @@ def generate_launch_description():
             spawn_z_arg,
             spawn_yaw_arg,
             robot_state_publisher_node,
+            # VS Code's snap packaging injects GTK_PATH into every integrated
+            # terminal it spawns. gz sim's GUI then resolves the canberra-gtk-module
+            # from inside that snap, which drags in the snap's bundled (older)
+            # libpthread and crashes with "symbol lookup error: ... undefined
+            # symbol: __libc_pthread_init" right after entities spawn, tearing
+            # down the whole sim before Nav2 has anything to act on.
+            UnsetEnvironmentVariable('GTK_PATH'),
             gz_sim,
             spawn_entity_node,
             ros_gz_bridge_node,

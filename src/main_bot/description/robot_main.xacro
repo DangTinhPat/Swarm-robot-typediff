@@ -91,7 +91,10 @@
     </link>
 
     <gazebo reference="chasis">
-        <material>Gazebo/Blue</material>
+        <material>
+            <ambient>0 0 1 1</ambient>
+            <diffuse>0 0 1 1</diffuse>
+        </material>
     </gazebo>
 
     <!-- left_wheel -->
@@ -120,7 +123,10 @@
     </link>
 
     <gazebo reference="left_wheel">
-        <material>Gazebo/Black</material>
+        <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+        </material>
     </gazebo>
 
     <!-- right_wheel -->
@@ -149,7 +155,10 @@
     </link>
 
     <gazebo reference="right_wheel">
-        <material>Gazebo/Black</material>
+        <material>
+            <ambient>0 0 0 1</ambient>
+            <diffuse>0 0 0 1</diffuse>
+        </material>
     </gazebo>
 
     <!-- caster_wheel_front -->
@@ -177,7 +186,10 @@
     </link>
 
     <gazebo reference="caster_wheel_front">
-        <material>Gazebo/Orange</material>
+        <material>
+            <ambient>1 0.25 0 1</ambient>
+            <diffuse>1 0.25 0 1</diffuse>
+        </material>
         <mu1 value= "0.0001"/>
         <mu2 value= "0.0001"/>
     </gazebo>
@@ -207,7 +219,10 @@
     </link>
 
     <gazebo reference="caster_wheel_rear">
-        <material>Gazebo/Orange</material>
+        <material>
+            <ambient>1 0.25 0 1</ambient>
+            <diffuse>1 0.25 0 1</diffuse>
+        </material>
         <mu1 value= "0.0001"/>
         <mu2 value= "0.0001"/>
     </gazebo>

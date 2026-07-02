@@ -34,9 +34,13 @@
     <gazebo reference="lidar_frame">
         <sensor name="lidar" type="gpu_lidar">
 
-            <gz_frame_id>lidar_frame</gz_frame_id> 
+            <!-- gz_frame_id stays unprefixed: robot_state_publisher isn't renaming
+                 URDF link names, it just gets its own /<robot_name>/tf topic via
+                 node namespacing, so "lidar_frame" is still the frame it publishes
+                 there. Only the gz-transport topic needs a unique name per robot. -->
+            <gz_frame_id>lidar_frame</gz_frame_id>
             <pose>0 0 0 0 0 0</pose>
-            <topic>scan</topic>
+            <topic>${frame_prefix}scan</topic>
             <update_rate>10</update_rate>
             <always_on>1</always_on>
             <visualize>true</visualize>
@@ -68,10 +72,10 @@
                 </noise>
             </lidar>
 
-        <plugin filename="gz-sim-sensors-system"
-                name="gz::sim::systems::Sensors">
-                <render_engine>ogre2</render_engine>
-        </plugin>
+        <!-- The Sensors system plugin is declared once at the world level
+             (worlds/warehouse.sdf) instead of per-robot here: it's a world-level
+             singleton, and re-registering it for a second spawned robot raced
+             and crashed the renderer. -->
 
         </sensor>
     </gazebo>
