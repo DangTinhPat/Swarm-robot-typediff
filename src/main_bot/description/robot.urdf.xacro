@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro"  name="robot">
+
+    <!-- Robot_frames -->
+    <xacro:include filename = "robot_main.xacro" />
+
+    <!-- Controls (ros2_control via gz_ros2_control, Gazebo simulation) -->
+    <xacro:include filename = "ros2_controller.xacro" />
+
+    <!-- Sensors -->
+    <xacro:include filename = "lidar.xacro" />
+
+</robot>
