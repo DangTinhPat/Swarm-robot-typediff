@@ -39,6 +39,11 @@ _REMAPPINGS = [
     ("/local_costmap/published_footprint", "local_costmap/published_footprint"),
     ("/downsampled_costmap", "downsampled_costmap"),
     ("/downsampled_costmap_updates", "downsampled_costmap_updates"),
+    # teb_local_planner's own debug output - not part of nav2_bringup's
+    # stock remap list above, added for visualizing what TEB is actually
+    # optimizing over (candidate poses/markers) alongside the costmaps.
+    ("/teb_markers", "teb_markers"),
+    ("/teb_poses", "teb_poses"),
 ]
 
 

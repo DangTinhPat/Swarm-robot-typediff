@@ -105,95 +105,123 @@ controller_server:
       xy_goal_tolerance: 0.25
       yaw_goal_tolerance: 0.25
     FollowPath:
-      plugin: "nav2_mppi_controller::MPPIController"
-      # MPPI is by far the heaviest node in the stack and runs once per robot;
-      # on this hardware two of them starve the CPU (controller_server can't
-      # keep up -> "Failed to make progress" aborts). Halved the compute:
-      # batch_size 2000->1000 (MPPI's own default) and time_steps 56->40.
-      time_steps: 40
-      model_dt: 0.05
-      batch_size: 1000
-      ax_max: 3.0
-      ax_min: -3.0
-      ay_max: 3.0
-      az_max: 3.5
-      vx_std: 0.2
-      vy_std: 0.2
-      wz_std: 0.4
-      vx_max: 1.0
-      vx_min: -0.6
-      vy_max: 0.5
-      wz_max: 2.5
-      iteration_count: 1
-      prune_distance: 1.7
-      transform_tolerance: 0.1
-      temperature: 0.3
-      gamma: 0.015
-      motion_model: "DiffDrive"
-      visualize: true
-      regenerate_noises: true
-      TrajectoryVisualizer:
-        trajectory_step: 5
-        time_step: 3
-      AckermannConstraints:
-        min_turning_r: 0.2
-      critics: [
-        "ConstraintCritic", "CostCritic", "GoalCritic",
-        "GoalAngleCritic", "PathAlignCritic", "PathFollowCritic",
-        "PathAngleCritic", "PreferForwardCritic"]
-      ConstraintCritic:
-        enabled: true
-        cost_power: 1
-        cost_weight: 4.0
-      GoalCritic:
-        enabled: true
-        cost_power: 1
-        cost_weight: 5.0
-        threshold_to_consider: 1.4
-      GoalAngleCritic:
-        enabled: true
-        cost_power: 1
-        cost_weight: 3.0
-        threshold_to_consider: 0.5
-      PreferForwardCritic:
-        enabled: true
-        cost_power: 1
-        cost_weight: 5.0
-        threshold_to_consider: 0.5
-      CostCritic:
-        enabled: true
-        cost_power: 1
-        cost_weight: 3.81
-        critical_cost: 300.0
-        # costmaps here use a circular robot_radius, not a footprint polygon;
-        # consider_footprint:true requires a real footprint and fails to configure.
-        consider_footprint: false
-        collision_cost: 1000000.0
-        near_goal_distance: 1.0
-        trajectory_point_step: 2
-      PathAlignCritic:
-        enabled: true
-        cost_power: 1
-        cost_weight: 14.0
-        max_path_occupancy_ratio: 0.05
-        trajectory_point_step: 4
-        threshold_to_consider: 0.5
-        offset_from_furthest: 20
-        use_path_orientations: false
-      PathFollowCritic:
-        enabled: true
-        cost_power: 1
-        cost_weight: 5.0
-        offset_from_furthest: 5
-        threshold_to_consider: 1.4
-      PathAngleCritic:
-        enabled: true
-        cost_power: 1
-        cost_weight: 2.0
-        offset_from_furthest: 4
-        threshold_to_consider: 0.5
-        max_angle_to_furthest: 1.0
-        mode: 0
+      plugin: "teb_local_planner::TebLocalPlannerROS"
+      # Switched from MPPI: sampling-based (batch_size x time_steps state
+      # rollouts every cycle) was the heaviest node in the stack, and two
+      # robots' worth of it starved this machine's CPU (controller_server/
+      # planner_server loop rate collapsing to 1-13Hz, see e2e_nav2.log).
+      # TEB optimizes a small graph of poses (g2o) instead of sampling
+      # thousands of trajectories - lighter per-robot in theory; measure the
+      # real CPU delta after this switch rather than assuming a number.
+      odom_topic: odom
+      map_frame: map
+      teb_autosize: 1.0
+      dt_ref: 0.3
+      dt_hysteresis: 0.1
+      max_samples: 500
+      global_plan_overwrite_orientation: false
+      allow_init_with_backwards_motion: false
+      max_global_plan_lookahead_dist: 3.0
+      global_plan_viapoint_sep: 0.3
+      global_plan_prune_distance: 1.0
+      exact_arc_length: false
+      feasibility_check_no_poses: 2
+      publish_feedback: false
+
+      # Robot - carried over from the velocity_smoother/MPPI tuning below
+      # instead of TEB's stock demo defaults (tuned for a much slower robot).
+      max_vel_x: 1.0
+      max_vel_theta: 2.5
+      acc_lim_x: 2.5
+      acc_lim_theta: 3.2
+
+      footprint_model:
+        type: "circular"
+        # Exact circumscribed radius of the real chassis: box is 0.320m x
+        # 0.240m centered on base_link (robot_main.xacro: chassis_length/
+        # chassis_width, wheel_offset_x cancels the chasis joint's own
+        # offset) -> sqrt(0.16^2 + 0.12^2) = 0.20m. Wheels stick out to
+        # y=+-0.146 but only near x=0, so they stay inside this circle.
+        radius: 0.20  # matches local/global costmap robot_radius below
+
+      free_goal_vel: false
+
+      # Obstacles
+      min_obstacle_dist: 0.27
+      inflation_dist: 0.6
+      include_costmap_obstacles: true
+      costmap_obstacles_behind_robot_dist: 1.0
+      obstacle_poses_affected: 15
+      dynamic_obstacle_inflation_dist: 0.6
+      include_dynamic_obstacles: true
+      # Measured: default costmap_converter (background thread vectorizing
+      # the whole local costmap into polygons every 200ms) plus
+      # no_inner/outer_iterations 5x4 made this controller_server cost 5-6x
+      # more CPU than the already-tuned MPPI it replaced (65.7% vs 10.9% avg,
+      # both robots navigating). Tried disabling costmap_converter (raw
+      # costmap-cell point obstacles instead of polygons) to cut that to
+      # 16.7%, but point obstacles are unreliable at tight corners - observed
+      # the planned path cutting a wall corner in rviz. Keeping
+      # costmap_converter on trades that CPU savings back for reliable
+      # polygon-based clearance; iterations still cut to 2x2 (20->4 passes)
+      # and homotopy planning still off, so this is 54.4% vs the 65.7%
+      # un-tuned default, not back to square one.
+      costmap_converter_plugin: "costmap_converter::CostmapToPolygonsDBSMCCH"
+      costmap_converter_spin_thread: true
+      costmap_converter_rate: 5
+
+      # Optimization
+      no_inner_iterations: 2
+      no_outer_iterations: 2
+      optimization_activate: true
+      optimization_verbose: false
+      penalty_epsilon: 0.1
+      obstacle_cost_exponent: 4.0
+      weight_max_vel_x: 0.5
+      weight_max_vel_theta: 0.5
+      weight_acc_lim_x: 0.5
+      weight_acc_lim_theta: 10.5
+      weight_kinematics_nh: 1000.0
+      weight_kinematics_forward_drive: 3.0
+      weight_kinematics_turning_radius: 1.0
+      weight_optimaltime: 1.0
+      weight_shortest_path: 0.0
+      weight_obstacle: 100.0
+      weight_inflation: 0.2
+      weight_dynamic_obstacle: 10.0
+      weight_dynamic_obstacle_inflation: 0.2
+      weight_viapoint: 50.0
+      weight_adapt_factor: 2.0
+
+      # Homotopy Class Planner
+      enable_homotopy_class_planning: false
+      enable_multithreading: true
+      max_number_classes: 4
+      selection_cost_hysteresis: 5.0
+      selection_prefer_initial_plan: 1.0
+      selection_obst_cost_scale: 1.0
+      selection_alternative_time_cost: true
+      roadmap_graph_no_samples: 15
+      roadmap_graph_area_width: 5.0
+      roadmap_graph_area_length_scale: 1.0
+      h_signature_prescaler: 0.5
+      h_signature_threshold: 0.1
+      obstacle_heading_threshold: 0.45
+      switching_blocking_period: 0.0
+      viapoints_all_candidates: true
+      delete_detours_backwards: true
+      max_ratio_detours_duration_best_duration: 3.0
+      visualize_hc_graph: false
+      visualize_with_time_as_z_axis_scale: 0.0
+
+      # Recovery
+      shrink_horizon_backup: true
+      shrink_horizon_min_duration: 10.0
+      oscillation_recovery: true
+      oscillation_v_eps: 0.1
+      oscillation_omega_eps: 0.1
+      oscillation_recovery_min_duration: 10.0
+      oscillation_filter_duration: 10.0
 
 local_costmap:
   local_costmap:
@@ -206,12 +234,18 @@ local_costmap:
       width: 3
       height: 3
       resolution: 0.05
-      robot_radius: 0.22
+      # Exact circumscribed radius of the real chassis (0.320m x 0.240m box
+      # centered on base_link, see robot_main.xacro) - sqrt(0.16^2+0.12^2).
+      robot_radius: 0.20
       plugins: ["voxel_layer", "inflation_layer"]
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.70
+        # Was 0.70 - 3.5x the robot's own 0.20m radius, eating into aisle
+        # clearance that was already tight (some corridors measured ~0.95m
+        # center-to-wall). robot_radius + ~50% buffer is plenty for a
+        # smooth cost gradient without being oversized relative to the robot.
+        inflation_radius: 0.30
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -246,7 +280,9 @@ global_costmap:
       publish_frequency: 1.0
       global_frame: map
       robot_base_frame: base_link
-      robot_radius: 0.22
+      # Exact circumscribed radius of the real chassis (0.320m x 0.240m box
+      # centered on base_link, see robot_main.xacro) - sqrt(0.16^2+0.12^2).
+      robot_radius: 0.20
       resolution: 0.05
       track_unknown_space: true
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
@@ -270,8 +306,16 @@ global_costmap:
         map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 1.0
-        inflation_radius: 0.05
+        # Was 0.05 - smaller than the robot's own inscribed radius (0.12),
+        # which nav2 warned about on every startup ("configured inflation
+        # radius is smaller than the computed inscribed radius") but nothing
+        # acted on: with almost no cost gradient around obstacles, the
+        # global planner treated paths grazing a wall corner as cheap and
+        # routed straight through them. 0.30 = robot_radius (0.20) + ~50%
+        # buffer - fixes that without the 0.70 in an earlier pass, which
+        # was 3.5x the robot's actual size and ate into aisle clearance.
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.30
       always_send_full_costmap: True
 
 map_saver:
